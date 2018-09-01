@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="format-detection" content="telephone=no,address=no,email=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Youhi</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css">
+    <style>
+        .markdown_textarea {
+            width: 30%;
+        }
+        @keyframes blink {
+            0% {
+                opacity: 1;
+              }
+            50% {
+                opacity: 0.1;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+        #download:not(.active), #nopdf:not(.active), #loading:not(.active) {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- main -->
+    <main class="main container-fluid">
+        <h1>Youhi</h1>
+        <form action="#" method="post" class="form-horizontal" id="pdfPOST" data-actionurl="">
+            <h3>Markdown</h3>
+            <!-- textarea内のデータをmd、pdfにするファイル名を <nameid>-<timestamp>.pdf とする -->
+            <div class="form-group">
+                <textarea id="textarea" class="markdown_textarea" rows="15" name="md"></textarea>
+            </div>
+            <input type="hidden" name="nameid" id="mdnameID" value="fugurumayouhi">
+            <input type="hidden" name="timestamp" id="mdTimeStamp" value="">
+            <button type="submit" class="btn btn-primary" id="mdButton">PDFとして保存</button>
+        </form>
+    </main>
+    <!-- /main -->
+
+<script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+<script>
+$(function() {
+    var $pdfPOST = $("#pdfPOST");
+    //URL格納
+    $pdfPOST.attr("data-actionurl", getURL());
+    //mdnameID取得
+    var mdnameID = $("#mdnameID").attr("value");
+    //POST用のURL作成
+    var actionURL = $pdfPOST.attr("data-actionurl");
+    var ts = timestamp();
+    actionURL += "?pdf=" + mdnameID + "-" + ts + ".pdf";
+    $pdfPOST.attr("action", actionURL);
+    $("#mdTimeStamp").attr("value", ts);
+});
+//URL取得
+function getURL() {
+    var loc = location;
+    var url = loc.protocol + "//" + loc.hostname + ":8001/";
+    return url;
+}
+//時刻を出力
+function timestamp() {
+    var Nowymdhms = new Date();
+    var NowYear = Nowymdhms.getYear();
+    var NowMon = Nowymdhms.getMonth() + 1;
+    if(NowMon < 10){
+        NowMon = "0" + NowMon;
+    }
+    var NowDay = Nowymdhms.getDate();
+    if(NowDay < 10){
+        NowDay = "0" + NowDay;
+    }
+    var NowHour = Nowymdhms.getHours();
+    if(NowHour < 10){
+        NowHour = "0" + NowHour;
+    }
+    var NowMin = Nowymdhms.getMinutes();
+    if(NowMin < 10){
+        NowMin = "0" + NowMin;
+    }
+    var NowSec = Nowymdhms.getSeconds();
+    var ymdhis = NowYear + NowMon + NowDay + NowHour + NowMin + NowSec;
+    return ymdhis;
+}
+</script>
+</body>
+</html>

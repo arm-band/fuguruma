@@ -1,0 +1,19 @@
+{
+  "name": "Fuguruma",
+  "version": "0.0.1",
+  "description": "markdown-pdfをWeb上から実行するためのミニマルパッケージ",
+  "main": "index.html",
+  "author": "Arm Band",
+  "license": "ISC",
+  "scripts": {
+    "mkd": "mkdirp pdf",
+    "chm": "chmod 777 pdf",
+    "setup": "npm-run-all -s mkd chm"
+  },
+  "devDependencies": {
+    "chmod": "^0.2.1",
+    "mkdirp": "^0.5.1",
+    "markdown-pdf": "^9.0.0",
+    "npm-run-all": "^4.1.3"
+  }
+}

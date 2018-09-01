@@ -1,0 +1,150 @@
+<!--
+//ここからはサーバサイド
+const http = require("http");
+const fs = require("fs");
+const qs = require("querystring");
+const markdownpdf = require("markdown-pdf");
+
+//IPを取得
+const os = require("os");
+const ips = os.networkInterfaces();
+//console.log(ips);
+//console.log(ips["eth0"][0]["address"]);
+
+//Webサーバとして動作
+http.createServer((req, res) => {
+    if (req.method === "POST") { //POSTで投げられたら処理
+        var pdfFile = "";
+        var body = "";
+        var postParam = "";
+        req.on("data", (data) => { //投げられたデータを格納(md=XXXXXXXX&nameid=YYY&timestamp=ZZZ という文字列で来る)
+            postParam += data;
+        });
+        req.on("end", () => { //レスポンスを生成する部分
+            var dataArray = qs.parse(postParam); //投げられたデータをパースして配列として格納
+            body = dataArray["md"]; //md部分
+            pdfFile = "./pdf/" + dataArray["nameid"] + "-" + dataArray["timestamp"] + ".pdf"; //PDFファイル名を生成
+            markdownpdf().from.string(body).to(pdfFile, () => { //markdown-pdfでpdf化
+                console.log("Created", pdfFile);
+                htmlShow(res, pdfFile); //レスポンスとしてこのファイルを返す(=HTML部分が実行、表示される)
+            });
+        });
+    } else {
+        htmlShow(res, ""); //POSTではない場合は単純にこのファイルをレスポンスとして返して表示させるだけ
+    }
+}).listen(8001, ips["eth0"][0]["address"]); //os.networkInterfaces() で取得したIPでLISTEN
+console.log("http://localhost:8001/ started...");
+
+//ページ読み込み
+const htmlShow = (res, pdfFile) => {
+    let filePath = "./index.html";
+    if(pdfFile.lenghth > 0) { //PDFファイル名が指定されている場合はGETパラメータに付与(ダウンロードリンク生成のために必要)
+        filePath += "?pdf=" + pdfFile;
+    }
+    fs.readFile(filePath, "utf8", (err, data) => { //レスポンスとしてこのファイルを返し、UTF-8で表示
+        res.writeHead(200, {"Content-Type": "text/html; charset=UTF-8"});
+        res.write(data);
+        res.end();
+    });
+}
+/*
+-->
+<!-- ここからはクライアントサイド -->
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="format-detection" content="telephone=no,address=no,email=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fuguruma</title>
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+    <script>
+    $(window).on("load", function() {
+        var active = "active";
+        var getParam = getParams();
+        var url = getURL() + "pdf/" + getParam["pdf"][0]; //パスがApacheとNodeで異なる場合はここで調整
+        if(getParam["pdf"][0].length > 0) { //サーバサイドでPDFファイル名をGETパラメータとして付与されているので、パースしてダウンロードリンクにする
+            //ポート番号がWeb(80 or 443)とNode(8001、上記で指定)では異なるのでクロスオリジンとされてしまう。jsonpでも良いが.htaccessで回避
+            $.ajax({
+                url: url,
+                type: "GET"
+            })
+            .done(function(data) { //ajaxでPDFファイルが取得できた(存在チェック成功)場合、ダウンロードボタンを表示
+                $("#loading").removeClass(active);
+                $("#download").addClass(active);
+                $("#downloadLink").attr("href", url); //GETパラメータからhrefを書き換える
+            })
+            .fail(function(data) {
+                console.log("failed.");
+            });
+        }
+        else { //PDFファイル名が指定されていない場合は「PDFファイルがありません」を表示
+            $("#loading").removeClass(active);
+            $("#nopdf").addClass(active);
+        }
+    });
+
+    //URL取得
+    function getURL() {
+        var loc = location;
+        var url = loc.protocol + "//" + loc.hostname + "/";
+        return url;
+    }
+    //GETパラメータ取得
+    function getParams() {
+        //URLから「?」以降の文字列を取り出す
+        var query = location.search.substr(1);
+        if(query.length > 0) {
+            // 「&」で分割して、順に処理する
+            var params = {};
+            query.split("&").forEach(function (item) {
+                // 「=」でパラメーター名と値に分割して、paramsに追加
+                var s = item.split("=");
+                var k = decodeURIComponent(s[0]);
+                var v = decodeURIComponent(s[1]);
+                (k in params) ? params[k].push(v) : params[k] = [v];
+            });
+            return params;
+        }
+        else { //GETパラメータない場合は空配列を返す
+            return [];
+        }
+    }
+    </script>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css">
+    <style>
+        #loading {
+            animation: blink 3s ease 0s infinite forwards running;
+        }
+        @keyframes blink {
+            0% {
+                opacity: 1;
+              }
+            50% {
+                opacity: 0.1;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+        #download:not(.active), #nopdf:not(.active), #loading:not(.active) {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+<div class="container-fluid text-center my-4">
+    <header class="border-bottom">
+        <h1>ダウンロードリンク</h1>
+    </header>
+    <main class="p-4">
+        <p id="loading" class="active">Now Generating...</p>
+        <p id="nopdf">PDFファイルがありません。</p>
+        <p id="download"><a href="#" id="downloadLink" class="btn btn-primary" role="button" download>ダウンロード</a></p>
+    </main>
+</div>
+</body>
+</html>
+<!--
+*/
+-->
